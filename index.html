@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SMOOSH</title>
+<meta name="description" content="SMOOSH. Find ur dream smoothies. Cari 150 resep smoothie lewat nama, menu, atau bahan.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: hero panel with search, then menu cards, ingredient picker, and a live results grid. Colour comes from the six menu colours. */
+:root{
+  --bg:#FBF8FF; --surface:#FFFFFF; --surface-2:#F2ECFF; --ink:#1F1535; --ink-2:#5B5075; --line:#E3D9F5;
+  --accent:#D1206A; --accent-ink:#FFFFFF; --focus:#5B3DF5; --shadow:0 8px 24px rgba(60,30,120,.10); --warn:#B42318;
+  --c-orange:#FF8A1F; --c-green:#2EB86B; --c-berry:#7C4DFF; --c-nut:#B9772F; --c-pink:#E8458B; --c-yellow:#F2B600;
+  --f-display:'Fredoka','Trebuchet MS',system-ui,sans-serif;
+  --f-body:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#150E26; --surface:#20163A; --surface-2:#2B1F4D; --ink:#F4EEFF; --ink-2:#BDB0DA; --line:#3A2C63;
+    --accent:#FF5C9D; --accent-ink:#1A0F2E; --focus:#A793FF; --shadow:0 8px 24px rgba(0,0,0,.35); --warn:#FF9A8A;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#150E26; --surface:#20163A; --surface-2:#2B1F4D; --ink:#F4EEFF; --ink-2:#BDB0DA; --line:#3A2C63;
+  --accent:#FF5C9D; --accent-ink:#1A0F2E; --focus:#A793FF; --shadow:0 8px 24px rgba(0,0,0,.35); --warn:#FF9A8A;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font:400 16px/1.55 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 40px;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--bg)}
+.wrap{max-width:1120px;margin:0 auto}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px;background:var(--bg)}
+.logo{display:flex;align-items:center;gap:10px;font:700 1.6rem/1 var(--f-display);letter-spacing:.03em;text-decoration:none;color:var(--ink)}
+.logo svg{width:34px;height:34px;flex:none}
+.logo .o1{color:var(--c-orange)} .logo .o2{color:var(--c-green)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:999px;border:2px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+
+.hero{
+  position:relative;overflow:hidden;border-radius:28px;padding:clamp(20px,5vw,48px);
+  display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:28px;align-items:center;
+  background:
+    radial-gradient(60% 80% at 100% 0%,color-mix(in srgb,var(--c-orange) 30%,transparent),transparent 70%),
+    radial-gradient(50% 70% at 0% 100%,color-mix(in srgb,var(--c-berry) 26%,transparent),transparent 70%),
+    var(--surface-2);
+}
+.hero h1{font-weight:700;font-size:clamp(2.5rem,7.5vw,4.6rem);line-height:.98}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{margin:14px 0 22px;max-width:46ch;color:var(--ink-2);font-size:1.05rem}
+.search{display:flex;gap:10px;flex-wrap:wrap}
+.search .field{flex:1 1 240px;min-width:0;position:relative}
+.search input{width:100%;min-height:52px;padding:0 18px 0 48px;border-radius:999px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font:600 1rem var(--f-body)}
+.search input::placeholder{color:var(--ink-2);opacity:.8}
+.search svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:22px;height:22px;color:var(--ink-2);pointer-events:none}
+.try{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center;color:var(--ink-2);font-weight:600;font-size:.92rem}
+.try button{min-height:36px;padding:0 14px;border-radius:999px;border:0;cursor:pointer;font-weight:700;background:color-mix(in srgb,var(--c-berry) 18%,var(--surface));color:var(--ink)}
+.try button:hover{background:color-mix(in srgb,var(--c-berry) 32%,var(--surface))}
+.bubbles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.bubbles span{aspect-ratio:1;max-width:100%;display:grid;place-items:center;border-radius:50%;font-size:clamp(1.8rem,5.5vw,3rem);background:color-mix(in srgb,var(--mc) 30%,var(--surface));animation:bob 4s ease-in-out infinite}
+.bubbles span:nth-child(2n){animation-delay:-1.3s;transform:translateY(8px)}
+.bubbles span:nth-child(3n){animation-delay:-2.4s}
+@keyframes bob{50%{translate:0 -8px}}
+@media (max-width:760px){.hero{grid-template-columns:minmax(0,1fr)}.bubbles{grid-template-columns:repeat(8,1fr)}.bubbles span{font-size:clamp(1.1rem,4.6vw,1.7rem)}}
+
+section{margin-top:44px}
+.sec-head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:8px 20px;margin-bottom:16px}
+.sec-head h2{font-size:clamp(1.5rem,3.6vw,2rem);font-weight:600}
+.sec-head p{margin:2px 0 0;color:var(--ink-2);max-width:60ch}
+
+.menus{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.menu-card{
+  display:grid;gap:8px;align-content:start;text-align:left;padding:16px;cursor:pointer;border-radius:22px;
+  background:color-mix(in srgb,var(--mc) 14%,var(--surface));
+  border:2px solid color-mix(in srgb,var(--mc) 35%,var(--line));
+  transition:transform .15s,box-shadow .15s;
+}
+.menu-card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.menu-card[aria-pressed="true"]{border-color:var(--mc);box-shadow:0 0 0 4px color-mix(in srgb,var(--mc) 32%,transparent)}
+.menu-card .disk{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:1.7rem;background:var(--mc)}
+.menu-card h3{font-size:1.25rem;font-weight:600}
+.menu-card p{margin:0;color:var(--ink-2);font-size:.93rem}
+.menu-card .foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;font-weight:700;font-size:.9rem}
+.menu-card .mini{letter-spacing:2px;font-size:1.05rem}
+.menu-card .sel{font-size:.78rem;padding:2px 8px;border-radius:999px;background:var(--ink);color:var(--bg)}
+
+.picker{padding:clamp(16px,3vw,24px);border-radius:26px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.tray{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;padding-bottom:16px;margin-bottom:16px;border-bottom:1px dashed var(--line)}
+.tray .picked{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0;color:var(--ink-2);font-weight:600}
+.tray .ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{min-height:40px;padding:0 14px;border:0;background:transparent;cursor:pointer;font-weight:700;font-size:.92rem}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.link{background:none;border:0;padding:8px 6px;cursor:pointer;font-weight:700;color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.grp+.grp{margin-top:18px}
+.grp h3{font:700 .78rem var(--f-body);text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 14px 0 10px;border-radius:999px;border:2px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:.95rem}
+.chip .em{font-size:1.35rem;line-height:1}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip.small{min-height:34px;font-size:.88rem;padding:0 10px 0 8px}
+.chip.small .em{font-size:1.1rem}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.toolbar select{min-height:44px;padding:0 14px;border-radius:999px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font:700 .95rem var(--f-body)}
+.active{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.tagx{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 6px 0 12px;border-radius:999px;border:0;background:color-mix(in srgb,var(--c-berry) 18%,var(--surface));cursor:pointer;font-weight:700;font-size:.9rem}
+.tagx b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:.8rem}
+#hasil{scroll-margin-top:84px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.card{position:relative;border-radius:22px;overflow:hidden;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);transition:transform .15s}
+.card:hover{transform:translateY(-3px)}
+.card-main{display:block;width:100%;padding:0;border:0;background:none;text-align:left;cursor:pointer}
+.art{height:100px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--mc) 24%,var(--surface))}
+.art span{width:58px;height:58px;display:grid;place-items:center;border-radius:50%;font-size:2rem;background:color-mix(in srgb,var(--mc) 20%,var(--surface));border:3px solid var(--surface)}
+.art span+span{margin-left:-14px}
+.meta{padding:14px 16px 16px;display:grid;gap:8px}
+.menu-tag{justify-self:start;padding:2px 10px;border-radius:999px;font-weight:700;font-size:.78rem;background:color-mix(in srgb,var(--mc) 22%,var(--surface))}
+.meta h3{font-size:1.2rem;font-weight:600}
+.ings{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.88rem;color:var(--ink-2)}
+.ings .m{color:var(--ink);font-weight:800;text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px}
+.match{font-weight:800;font-size:.85rem;color:var(--accent)}
+.fav{position:absolute;top:10px;right:10px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:1.3rem;line-height:1;color:var(--ink-2)}
+.fav[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.more{display:flex;justify-content:center;margin-top:22px}
+.empty{padding:36px 20px;text-align:center;border-radius:24px;border:2px dashed var(--line);color:var(--ink-2)}
+.empty .big{font-size:2.6rem}
+.empty h3{color:var(--ink);font-size:1.3rem;margin:6px 0}
+.empty p{margin:0 auto 16px;max-width:44ch}
+
+.pill{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:40;box-shadow:0 10px 30px rgba(0,0,0,.28);max-width:calc(100% - 32px)}
+
+.overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(20,10,40,.6);padding:12px max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:640px;max-height:100%;overflow:auto;border-radius:28px;background:var(--surface);border:1px solid var(--line);position:relative}
+.sheet-top{padding:24px 20px 20px;background:color-mix(in srgb,var(--mc) 26%,var(--surface))}
+.sheet-top .art2{display:flex;margin-bottom:14px}
+.sheet-top .art2 span{width:64px;height:64px;display:grid;place-items:center;border-radius:50%;font-size:2.2rem;background:var(--surface);border:3px solid color-mix(in srgb,var(--mc) 26%,var(--surface))}
+.sheet-top .art2 span+span{margin-left:-14px}
+.sheet-top h2{font-size:clamp(1.7rem,5vw,2.3rem);font-weight:700;line-height:1.05;padding-right:100px}
+.sheet-top .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{padding:3px 12px;border-radius:999px;background:var(--surface);font-weight:700;font-size:.82rem}
+.sheet-actions{position:absolute;top:14px;right:14px;display:flex;gap:8px}
+.sheet-actions button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:1.2rem;color:var(--ink-2)}
+.sheet-actions .fav2[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.sheet-body{padding:20px 20px calc(24px + env(safe-area-inset-bottom,0px));display:grid;gap:22px}
+.sheet-body h3{font-size:1.15rem;font-weight:600;margin-bottom:10px}
+.ing-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.ing-list li{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:16px;background:var(--surface-2);font-weight:700}
+.ing-list .em{font-size:1.5rem}
+.ing-list small{display:block;font-weight:600;color:var(--ink-2);font-size:.75rem}
+.steps{margin:0;padding-left:1.3rem;display:grid;gap:8px}
+.steps li::marker{font-weight:800;color:var(--accent)}
+.facts{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--ink-2);font-weight:700;font-size:.9rem}
+.similar{display:flex;flex-wrap:wrap;gap:8px}
+
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink-2);font-size:.9rem;display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 20px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.avoid{padding-bottom:16px;margin-bottom:16px;border-bottom:1px dashed var(--line)}
+.avoid h3{font:700 .78rem var(--f-body);text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);margin-bottom:6px}
+.avoid .hint{margin:0 0 10px;color:var(--ink-2);font-size:.9rem}
+.chip.warn:hover{border-color:var(--warn)}
+.chip.warn[aria-pressed="true"]{background:var(--warn);border-color:var(--warn);color:var(--bg)}
+.taste{font-size:.85rem;font-weight:700;color:var(--ink-2)}
+.algs{display:flex;flex-wrap:wrap;gap:6px}
+.alg{padding:1px 9px;border-radius:999px;font-size:.75rem;font-weight:800;border:1.5px solid var(--warn);color:var(--warn)}
+.rasa{margin:0;font-size:.88rem;color:var(--ink-2)}
+.rasa b{color:var(--ink)}
+.about{margin-bottom:18px;padding:18px;border-radius:22px;display:grid;gap:10px;background:color-mix(in srgb,var(--mc) 14%,var(--surface));border:2px solid color-mix(in srgb,var(--mc) 35%,var(--line))}
+.about h3{font-size:1.25rem;font-weight:600}
+.about dl{margin:0;display:grid;gap:10px}
+.about dt{font-weight:800;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2)}
+.about dd{margin:0}
+.warnbox,.okbox{padding:14px 16px;border-radius:18px}
+.warnbox{border:2px solid var(--warn);background:color-mix(in srgb,var(--warn) 9%,var(--surface))}
+.okbox{border:2px solid var(--line);background:var(--surface-2)}
+.warnbox h3{color:var(--warn);margin-bottom:8px}
+.okbox h3{margin-bottom:6px}
+.warnbox ul,.bul{margin:0;padding-left:1.2rem;display:grid;gap:6px}
+.okbox p,.plain{margin:0}
+.disc{margin:0;font-size:.82rem;color:var(--ink-2)}
+footer .disc{flex-basis:100%}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <a class="logo" href="#" aria-label="SMOOSH, ke atas">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 12h22l-3 22a3 3 0 0 1-3 2.6H15a3 3 0 0 1-3-2.6z" fill="var(--c-pink)"/><path d="M10.2 20h19.6l-.9 6.5H11.1z" fill="var(--c-orange)"/><path d="M11.1 26.5h17.8l-.8 6H11.9z" fill="var(--c-green)"/><path d="M7 12h26" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/><path d="M24 12 28 3" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/></svg>
+      <span>SM<span class="o1">O</span><span class="o2">O</span>SH</span>
+    </a>
+    <button class="btn" id="favToggle" type="button" aria-pressed="false">♥ Favorit <span id="favCount">0</span></button>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1>Find ur <em>dream</em> smoothies</h1>
+        <p>150 resep dalam 6 menu. Cari lewat nama, pilih bahan yang ada di dapurmu, atau jelajahi satu menu penuh.</p>
+        <form class="search" id="searchForm" role="search">
+          <div class="field">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <label class="sr" for="q">Cari menu atau bahan</label>
+            <input id="q" type="search" placeholder="Cari nama atau bahan, mis. mangga" autocomplete="off">
+          </div>
+          <button class="btn primary" type="submit">Cari resep</button>
+        </form>
+        <div class="try" id="try"><span>Coba:</span></div>
+      </div>
+      <div class="bubbles" aria-hidden="true" id="bubbles"></div>
+    </div>
+
+    <section aria-labelledby="h-menu">
+      <div class="sec-head">
+        <div><h2 id="h-menu">Pilih menu</h2><p>Setiap menu berisi 25 resep dengan karakter yang sama. Ketuk lagi untuk melepas pilihan.</p></div>
+      </div>
+      <div class="menus" id="menus"></div>
+    </section>
+
+    <section aria-labelledby="h-bahan">
+      <div class="sec-head">
+        <div><h2 id="h-bahan">Pilih bahan</h2><p>Ketuk bahan yang kamu punya. Resep yang memakai paling banyak bahanmu muncul paling atas.</p></div>
+      </div>
+      <div class="picker">
+        <div class="tray">
+          <div class="picked" id="picked"></div>
+          <div class="ctrl">
+            <div class="seg" role="group" aria-label="Cara mencocokkan bahan">
+              <button type="button" data-mode="any" aria-pressed="true">Salah satu</button>
+              <button type="button" data-mode="all" aria-pressed="false">Semua bahan</button>
+            </div>
+            <button class="link" type="button" id="clearSel" hidden>Hapus bahan</button>
+          </div>
+        </div>
+        <div class="avoid"><h3>Hindari karena alergi</h3><p class="hint">Resep yang mengandung, atau mungkin mengandung, bahan ini akan disembunyikan.</p><div class="chips" id="avoidChips"></div></div>
+        <div id="groups"></div>
+      </div>
+    </section>
+
+    <section id="hasil" aria-labelledby="h-hasil">
+      <div class="sec-head">
+        <div><h2 id="h-hasil">Resep</h2><p id="count" aria-live="polite"></p></div>
+        <div class="toolbar">
+          <label class="sr" for="sort">Urutkan</label>
+          <select id="sort"><option value="rel">Paling cocok</option><option value="az">Nama A sampai Z</option></select>
+          <button class="link" type="button" id="resetAll" hidden>Reset semua</button>
+        </div>
+      </div>
+      <div class="about" id="about" hidden></div>
+      <div class="active" id="active"></div>
+      <div class="grid" id="grid"></div>
+      <div class="more" id="more"></div>
+    </section>
+  </main>
+
+  <footer><span>SMOOSH. Find ur dream smoothies.</span><span>6 menu, 150 resep</span><p class="disc">Informasi rasa, manfaat, kesehatan, dan alergi bersifat umum, bukan pengganti saran dokter atau ahli gizi. Selalu baca label produk yang kamu pakai.</p></footer>
+</div>
+
+<button class="btn primary pill" id="pill" type="button" hidden></button>
+<div class="overlay" id="overlay" hidden></div>
+
+<script>
+/*DATA*/
+const ING_RAW=`
+pisang|🍌|Pisang|b
+mangga|🥭|Mangga|b
+nanas|🍍|Nanas|b
+stroberi|🍓|Stroberi|b
+blueberry|🫐|Blueberry|b
+apel|🍎|Apel|b
+jeruk|🍊|Jeruk|b
+lemon|🍋|Lemon|b
+semangka|🍉|Semangka|b
+anggur|🍇|Anggur|b
+kiwi|🥝|Kiwi|b
+persik|🍑|Persik|b
+ceri|🍒|Ceri|b
+pir|🍐|Pir|b
+melon|🍈|Melon|b
+alpukat|🥑|Alpukat|b
+kurma|🌴|Kurma|b
+kelapa|🥥|Daging kelapa|b
+bayam|🥬|Bayam|s
+brokoli|🥦|Brokoli|s
+timun|🥒|Timun|s
+wortel|🥕|Wortel|s
+ubi|🍠|Ubi|s
+labu|🎃|Labu kuning|s
+jagung|🌽|Jagung manis|s
+mint|🌿|Daun mint|s
+jahe|🫚|Jahe|s
+almond|🌰|Almond|k
+kacangtanah|🥜|Kacang tanah|k
+kenari|🌰|Kenari|k
+mete|🥜|Kacang mete|k
+oat|🌾|Oat|k
+chia|🌱|Biji chia|k
+bunga|🌻|Biji bunga matahari|k
+susu|🥛|Susu sapi|c
+susualmond|🥛|Susu almond|c
+susuoat|🥛|Susu oat|c
+yogurt|🥣|Yogurt|c
+santan|🥥|Santan|c
+airkelapa|💦|Air kelapa|c
+air|💧|Air putih|c
+esbatu|🧊|Es batu|c
+tehhijau|🍵|Teh hijau|c
+madu|🍯|Madu|l
+coklat|🍫|Coklat|l
+kayumanis|🍂|Kayu manis|l
+vanila|🌼|Vanila|l
+matcha|🍵|Matcha|l
+kopi|☕|Kopi|l
+eskrim|🍨|Es krim|l
+kunyit|🟡|Kunyit|l
+`;
+const GROUPS=[['b','Buah'],['s','Sayur & herba'],['k','Kacang & biji'],['c','Cairan & susu'],['l','Pelengkap']];
+const MENUS=[
+{id:'tropical',name:'Tropical Escape',emoji:'🍍',color:'#FF8A1F',desc:'Mangga, nanas, dan kelapa yang segar dan manis.',raw:`
+Mango Sunrise: mangga,jeruk,yogurt,esbatu
+Pina Coco Cloud: nanas,santan,kelapa,esbatu
+Banana Mango Tango: pisang,mangga,susu,madu
+Island Breeze: nanas,mangga,airkelapa,esbatu
+Sunny Side: mangga,pisang,jeruk,air
+Coco Mango Lassi: mangga,yogurt,kelapa,madu
+Pineapple Mint Cooler: nanas,mint,lemon,esbatu
+Kiwi Pina Zing: kiwi,nanas,air,madu
+Beach Day Melon: melon,nanas,airkelapa,mint
+Tropical Twist: mangga,nanas,jeruk,pisang
+Golden Hour: mangga,jahe,jeruk,esbatu
+Hawaiian Dream: nanas,pisang,santan,vanila
+Mango Coconut Chia: mangga,santan,chia,madu
+Pineapple Ginger Fizz: nanas,jahe,lemon,air
+Banana Coco Bliss: pisang,kelapa,santan,kayumanis
+Lagoon Kiwi: kiwi,melon,airkelapa,mint
+Peach Mango Glow: persik,mangga,yogurt,madu
+Melon Colada: melon,santan,nanas,esbatu
+Sunset Orange Mango: jeruk,mangga,wortel,jahe
+Coconut Lemon Cooler: kelapa,lemon,airkelapa,mint
+Pina Greens Light: nanas,bayam,airkelapa,lemon
+Tropical Oat Morning: mangga,pisang,oat,susuoat
+Mango Almond Cream: mangga,almond,susualmond,madu
+Pineapple Yogurt Swirl: nanas,yogurt,madu,esbatu
+Palm Paradise: kurma,kelapa,pisang,susu
+`},
+{id:'green',name:'Green Fresh',emoji:'🥬',color:'#2EB86B',desc:'Sayur dan buah hijau yang ringan dan menyegarkan.',raw:`
+Green Machine: bayam,apel,pisang,air
+Cucumber Cooler: timun,mint,lemon,esbatu
+Kiwi Spinach Glow: kiwi,bayam,apel,airkelapa
+Avocado Green Cream: alpukat,bayam,pisang,susualmond
+Broccoli Pear Boost: brokoli,pir,apel,air
+Mint Melon Refresh: melon,timun,mint,esbatu
+Green Tea Zen: tehhijau,pisang,bayam,madu
+Matcha Spinach: matcha,bayam,pisang,susuoat
+Apple Ginger Green: apel,jahe,bayam,lemon
+Cool Dew: timun,apel,lemon,jahe
+Pineapple Cucumber Rush: nanas,timun,mint,air
+Avocado Lemon Cooler: alpukat,timun,lemon,mint
+Spinach Mango Sunshine: bayam,mangga,jeruk,air
+Kiwi Cucumber Chill: kiwi,timun,madu,esbatu
+Green Protein: bayam,pisang,almond,susualmond
+Pear Mint Fresh: pir,mint,timun,airkelapa
+Avocado Banana Smooth: alpukat,pisang,susu,madu
+Broccoli Kiwi Punch: brokoli,kiwi,apel,jeruk
+Honeydew Green: melon,bayam,lemon,airkelapa
+Green Oat Morning: bayam,oat,pisang,susuoat
+Sunflower Green: bayam,bunga,apel,air
+Matcha Avocado Dream: matcha,alpukat,susuoat,madu
+Garden Fresh: timun,wortel,apel,lemon
+Coconut Spinach: bayam,kelapa,airkelapa,nanas
+Chia Green Glow: bayam,chia,kiwi,air
+`},
+{id:'berry',name:'Berry Blast',emoji:'🫐',color:'#7C4DFF',desc:'Stroberi, blueberry, ceri, dan anggur yang asam manis.',raw:`
+Strawberry Banana: stroberi,pisang,susu,madu
+Blueberry Bliss: blueberry,pisang,yogurt,madu
+Berry Cloud: stroberi,blueberry,yogurt,esbatu
+Cherry Choco Kiss: ceri,coklat,susu,pisang
+Strawberry Vanilla Swirl: stroberi,vanila,yogurt,madu
+Purple Haze: blueberry,anggur,apel,air
+Watermelon Berry Splash: semangka,stroberi,mint,esbatu
+Blueberry Oat Morning: blueberry,oat,susuoat,madu
+Cherry Almond Dream: ceri,almond,susualmond,vanila
+Grape Escape: anggur,pisang,blueberry,air
+Strawberry Kiwi Crush: stroberi,kiwi,apel,esbatu
+Blueberry Spinach Punch: blueberry,bayam,pisang,susualmond
+Strawberry Mint Lemonade: stroberi,lemon,mint,madu,esbatu
+Cherry Vanilla Cream: ceri,vanila,yogurt,pisang
+Watermelon Cooler: semangka,lemon,mint,esbatu
+Berry Chia Boost: stroberi,blueberry,chia,susualmond
+Strawberry Peach Delight: stroberi,persik,yogurt,madu
+Blueberry Lemon Zest: blueberry,lemon,yogurt,madu
+Grape Apple Cooler: anggur,apel,lemon,esbatu
+Strawberry Coconut Cream: stroberi,santan,pisang,madu
+Cherry Berry Mix: ceri,stroberi,blueberry,airkelapa
+Blue Lagoon: blueberry,nanas,airkelapa,esbatu
+Pink Sunrise: stroberi,semangka,jeruk,esbatu
+Strawberry Peanut Butter: stroberi,kacangtanah,pisang,susu
+Blueberry Almond Crunch: blueberry,almond,susualmond,madu
+`},
+{id:'nutty',name:'Nutty Power',emoji:'🥜',color:'#B9772F',desc:'Kacang dan biji-bijian yang kenyang dan gurih.',raw:`
+Peanut Butter Banana: kacangtanah,pisang,susu,madu
+Almond Joy: almond,coklat,susualmond,pisang
+Oat Power: oat,pisang,susu,kayumanis
+Walnut Date Shake: kenari,kurma,susu,vanila
+Cashew Cream: mete,pisang,susualmond,madu
+Choco Peanut Blast: kacangtanah,coklat,pisang,susu
+Protein Greens: bayam,kacangtanah,pisang,susualmond
+Sunflower Seed Boost: bunga,pisang,apel,susuoat
+Coffee Almond Kick: kopi,almond,pisang,susualmond
+Oat Apple Pie: oat,apel,kayumanis,susu
+Chia Peanut Fuel: chia,kacangtanah,pisang,susu
+Date Almond Energy: kurma,almond,pisang,susualmond
+Cashew Mango: mete,mangga,airkelapa,madu
+Walnut Banana Bread: kenari,pisang,kayumanis,susu
+Peanut Berry Jam: kacangtanah,stroberi,yogurt,oat
+Almond Berry Protein: almond,blueberry,yogurt,chia
+Morning Muesli: oat,pisang,yogurt,madu
+Honey Oat Latte: oat,kopi,susuoat,madu
+Seed Trio: chia,bunga,kenari,pisang,susu
+Peanut Coconut: kacangtanah,santan,pisang,kurma
+Cashew Vanilla: mete,vanila,pisang,susu
+Almond Date Cinnamon: almond,kurma,kayumanis,susualmond
+Sweet Potato Oat: ubi,oat,kayumanis,susu
+Nutty Avocado: alpukat,kacangtanah,pisang,susualmond
+Walnut Coffee: kenari,kopi,pisang,susu
+`},
+{id:'creamy',name:'Creamy Dessert',emoji:'🍫',color:'#E8458B',desc:'Kental, manis, dan lembut seperti pencuci mulut.',raw:`
+Choco Banana Shake: coklat,pisang,susu,eskrim
+Vanilla Cloud: vanila,eskrim,susu,pisang
+Mocha Frappe: kopi,coklat,susu,esbatu
+Strawberry Milkshake: stroberi,eskrim,susu,vanila
+Avocado Choco: alpukat,coklat,susu,madu
+Matcha Latte Shake: matcha,eskrim,susu,esbatu
+Mango Ice Cream Float: mangga,eskrim,susu,vanila
+Banana Cinnamon Roll: pisang,kayumanis,vanila,susu
+Coconut Cream Dream: santan,kelapa,eskrim,pisang
+Peanut Choco Shake: kacangtanah,coklat,eskrim,susu
+Blueberry Cheesecake Shake: blueberry,yogurt,vanila,eskrim
+Cherry Choco Dream: ceri,coklat,eskrim,susu
+Date Caramel Shake: kurma,vanila,susu,esbatu
+Pumpkin Spice: labu,kayumanis,vanila,susu
+Sweet Potato Pie: ubi,kayumanis,susu,madu
+Almond Mocha: almond,kopi,coklat,susualmond
+Choco Mint: coklat,mint,eskrim,susu
+Peach Cream: persik,eskrim,yogurt,vanila
+Avocado Vanilla Cream: alpukat,vanila,susu,madu
+Coffee Banana Cream: kopi,pisang,eskrim,susu
+Honey Vanilla Oat: oat,madu,vanila,susuoat
+Strawberry Banana Cream: stroberi,pisang,eskrim,yogurt
+Coconut Mango Cream: mangga,santan,eskrim,madu
+Walnut Choco: kenari,coklat,pisang,susu
+Cinnamon Apple Cream: apel,kayumanis,eskrim,susu
+`},
+{id:'citrus',name:'Citrus & Glow',emoji:'🍊',color:'#F2B600',desc:'Jeruk, jahe, wortel, dan kunyit yang hangat dan cerah.',raw:`
+Citrus Ginger Shot: jeruk,lemon,jahe,madu
+Golden Turmeric: kunyit,jahe,mangga,santan
+Carrot Orange: wortel,jeruk,jahe,air
+Sunrise Citrus: jeruk,wortel,mangga,kunyit
+Ginger Apple Zing: jahe,apel,lemon,madu
+Kiwi Orange Boost: kiwi,jeruk,madu,air
+Pineapple Turmeric: nanas,kunyit,jahe,airkelapa
+Carrot Apple Zing: wortel,apel,lemon,jahe
+Green Citrus: bayam,jeruk,kiwi,jahe
+Honey Lemon Ginger: lemon,jahe,madu,air
+Berry Citrus: blueberry,jeruk,madu,yogurt
+Pumpkin Glow: labu,wortel,jahe,kayumanis
+Carrot Mango Glow: wortel,mangga,almond,susualmond
+Broccoli Kick: brokoli,jeruk,apel,jahe
+Pear Ginger Calm: pir,jahe,madu,air
+Cherry Calm: ceri,pisang,yogurt,madu
+Apple Carrot Sunshine: apel,wortel,jeruk,kayumanis
+Sweet Potato Warmth: ubi,jahe,kayumanis,susuoat
+Orange Mango Cloud: jeruk,mangga,kiwi,yogurt
+Lemon Mint Cooler: lemon,mint,timun,madu
+Turmeric Banana: kunyit,pisang,susu,madu
+Green Tea Citrus: tehhijau,jeruk,lemon,madu
+Melon Orange Fresh: melon,jeruk,jahe,esbatu
+Grape Citrus: anggur,jeruk,lemon,mint
+Carrot Coconut: wortel,kelapa,airkelapa,jahe
+`}];
+/*DATA_END*/
+
+(function(){
+const ING={};
+ING_RAW.trim().split('\n').forEach(l=>{const [id,e,n,g]=l.split('|');ING[id]={id,e,n,g};});
+const MENU={};MENUS.forEach(m=>MENU[m.id]=m);
+const RECIPES=[];
+MENUS.forEach(m=>{m.raw.trim().split('\n').forEach((l,i)=>{
+  const [name,list]=l.split(':');
+  const r={id:m.id+'-'+(i+1),menu:m.id,name:name.trim(),ings:list.split(',').map(s=>s.trim()),idx:RECIPES.length};
+  r.hay=(r.name+' '+m.name+' '+r.ings.map(x=>ING[x].n).join(' ')).toLowerCase();
+  RECIPES.push(r);
+});});
+const BYID={};RECIPES.forEach(r=>BYID[r.id]=r);
+
+/*INFO*/
+const ALG={susu:'Susu sapi',kacangtanah:'Kacang tanah',kacangpohon:'Kacang pohon',gluten:'Gluten',telur:'Telur',kelapa:'Kelapa'};
+const ALG_EMO={susu:'🥛',kacangtanah:'🥜',kacangpohon:'🌰',gluten:'🌾',telur:'🥚',kelapa:'🥥'};
+const ALG_OF={almond:['kacangpohon'],kenari:['kacangpohon'],mete:['kacangpohon'],susualmond:['kacangpohon'],kacangtanah:['kacangtanah'],susu:['susu'],yogurt:['susu'],eskrim:['susu','?telur'],coklat:['?susu'],oat:['?gluten'],susuoat:['?gluten'],kelapa:['kelapa'],santan:['kelapa'],airkelapa:['kelapa']};
+const TASTE={pisang:'Manis',mangga:'Manis',nanas:'Asam segar',stroberi:'Asam segar',blueberry:'Asam segar',apel:'Manis',jeruk:'Asam segar',lemon:'Asam segar',semangka:'Segar ringan',anggur:'Manis',kiwi:'Asam segar',persik:'Manis',ceri:'Manis',pir:'Manis',melon:'Segar ringan',alpukat:'Creamy',kurma:'Manis',kelapa:'Creamy',bayam:'Sedikit pahit',brokoli:'Sedikit pahit',timun:'Segar ringan',wortel:'Manis',ubi:'Manis',labu:'Manis',mint:'Segar ringan',jahe:'Hangat',almond:'Gurih kacang',kacangtanah:'Gurih kacang',kenari:'Gurih kacang',mete:'Gurih kacang',oat:'Gurih kacang',bunga:'Gurih kacang',susu:'Creamy',susualmond:'Creamy',susuoat:'Creamy',yogurt:'Creamy',santan:'Creamy',airkelapa:'Segar ringan',tehhijau:'Sedikit pahit',madu:'Manis',coklat:'Manis',kayumanis:'Hangat',vanila:'Manis',matcha:'Sedikit pahit',kopi:'Sedikit pahit',eskrim:'Manis',kunyit:'Sedikit pahit'};
+const TASTE_ORDER=['Manis','Asam segar','Segar ringan','Creamy','Gurih kacang','Hangat','Sedikit pahit'];
+const THICK=['pisang','alpukat','eskrim','oat','chia','ubi','labu','yogurt','kurma','kacangtanah','mete'];
+const BEN={pisang:'Kalium dan energi cepat',mangga:'Vitamin A dan C',nanas:'Vitamin C dan mangan',stroberi:'Vitamin C dan antioksidan',blueberry:'Antioksidan (antosianin) dan serat',apel:'Serat (pektin) dan vitamin C',jeruk:'Vitamin C',lemon:'Vitamin C',semangka:'Banyak air dan likopen',anggur:'Antioksidan (polifenol)',kiwi:'Vitamin C, vitamin K, dan serat',persik:'Vitamin A dan C serta serat',ceri:'Antioksidan dan vitamin C',pir:'Serat',melon:'Banyak air dan kalium',alpukat:'Lemak tak jenuh, serat, dan kalium',kurma:'Serat dan energi alami',kelapa:'Serat dan energi (lemak jenuhnya lebih tinggi)',bayam:'Zat besi, folat, dan vitamin K',brokoli:'Vitamin C, vitamin K, dan serat',timun:'Banyak air',wortel:'Beta-karoten (diubah tubuh jadi vitamin A)',ubi:'Karbohidrat kompleks dan serat',labu:'Beta-karoten dan serat',jahe:'Rasa hangat, dikenal membantu meredakan mual ringan',almond:'Vitamin E dan lemak tak jenuh',kacangtanah:'Protein dan lemak tak jenuh',kenari:'Omega-3 nabati (ALA)',mete:'Magnesium dan mineral lain',oat:'Serat larut (beta-glukan)',chia:'Serat dan omega-3 nabati (ALA)',bunga:'Vitamin E dan mineral',susu:'Protein dan kalsium',susualmond:'Alternatif tanpa laktosa',susuoat:'Alternatif tanpa laktosa',yogurt:'Protein dan kultur baik (probiotik) bila berlabel kultur hidup',santan:'Energi dan lemak (jenuh)',airkelapa:'Kalium dan cairan',tehhijau:'Antioksidan (katekin) dan sedikit kafein',madu:'Pemanis alami, tetap mengandung gula',coklat:'Antioksidan kakao (lebih banyak pada coklat pekat)',matcha:'Antioksidan dan sedikit kafein',kopi:'Kafein, bikin lebih segar',eskrim:'Sedikit kalsium, tapi gula dan lemaknya tinggi',kunyit:'Mengandung kurkumin, memberi warna dan rasa hangat'};
+const MENU_INFO={
+tropical:{rasa:'Manis segar dengan sedikit asam dari nanas dan jeruk, teksturnya lembut.',manfaat:'Banyak vitamin C dan vitamin A dari mangga, nanas, dan jeruk. Kelapa dan air kelapa menambah kalium dan cairan.'},
+green:{rasa:'Segar dan ringan. Rasa sayur hijau diimbangi apel, pisang, atau nanas.',manfaat:'Serat, folat, dan vitamin K dari sayuran hijau, plus banyak air dari timun dan melon.'},
+berry:{rasa:'Asam manis dengan aroma buah merah dan ungu.',manfaat:'Antioksidan (antosianin) dan vitamin C dari stroberi, blueberry, ceri, dan anggur.'},
+nutty:{rasa:'Gurih, kental, dan mengenyangkan.',manfaat:'Protein, lemak tak jenuh, vitamin E, dan serat dari kacang, biji-bijian, dan oat. Lebih padat energi, jadi cocok saat butuh tenaga.'},
+creamy:{rasa:'Manis, kental, dan lembut seperti pencuci mulut.',manfaat:'Susu menyumbang protein dan kalsium. Kandungan gula dan lemaknya lebih tinggi, jadi paling pas sebagai camilan penutup.'},
+citrus:{rasa:'Asam segar dengan hangat dari jahe atau kunyit.',manfaat:'Vitamin C dari jeruk dan kiwi, beta-karoten dari wortel dan mangga, plus rasa hangat dari jahe.'}
+};
+const DISC='Informasi umum, bukan pengganti saran dokter atau ahli gizi. Jika kamu punya alergi berat, penyakit kronis, sedang hamil atau menyusui, atau rutin minum obat, tanyakan dulu ke tenaga kesehatan.';
+RECIPES.forEach(r=>{
+  r.algDef=new Set();const maybe=new Set();
+  r.ings.forEach(i=>(ALG_OF[i]||[]).forEach(a=>{if(a[0]==='?')maybe.add(a.slice(1));else r.algDef.add(a);}));
+  r.algMaybe=new Set([...maybe].filter(k=>!r.algDef.has(k)));
+  r.algAll=new Set([...r.algDef,...r.algMaybe]);
+  const cnt={};r.ings.forEach(i=>{const t=TASTE[i];if(t)cnt[t]=(cnt[t]||0)+1;});
+  r.taste=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||TASTE_ORDER.indexOf(a)-TASTE_ORDER.indexOf(b)).slice(0,3);
+  const thick=r.ings.filter(i=>THICK.includes(i)).length;
+  r.tex=thick>=2?'Kental dan lembut':(r.ings.includes('esbatu')?'Dingin dan ringan':'Cair dan ringan');
+});
+function namesOf(r,list){return r.ings.filter(i=>list.includes(i)).map(i=>ING[i].n.toLowerCase());}
+function cap(t){return t.charAt(0).toUpperCase()+t.slice(1);}
+function healthNotes(r){
+  const o=[];const has=l=>r.ings.some(i=>l.includes(i));
+  if(r.ings.includes('eskrim'))o.push('Tinggi gula dan lemak karena memakai es krim. Lebih pas sebagai camilan penutup.');
+  if(has(['madu','kurma','eskrim']))o.push(`Penderita diabetes: ${join(namesOf(r,['madu','kurma','eskrim']))} menaikkan kadar gula darah. Batasi atau tanyakan porsinya ke dokter.`);
+  if(has(['kopi','matcha','tehhijau','coklat']))o.push(`Mengandung kafein dari ${join(namesOf(r,['kopi','matcha','tehhijau','coklat']))}. Batasi saat hamil, menyusui, atau sulit tidur.`);
+  if(r.ings.filter(i=>['pisang','bayam','alpukat','kurma','airkelapa'].includes(i)).length>=2)o.push('Kalium cukup tinggi. Penderita gangguan ginjal atau yang membatasi kalium sebaiknya bertanya ke dokter dulu.');
+  if(r.ings.includes('bayam'))o.push('Bayam mengandung oksalat dan vitamin K. Jika pernah batu ginjal atau minum obat pengencer darah, tanyakan ke dokter.');
+  if(has(['jahe','kunyit']))o.push(`${cap(join(namesOf(r,['jahe','kunyit'])))} dalam jumlah banyak bisa mengiritasi lambung dan berinteraksi dengan obat tertentu, misalnya pengencer darah.`);
+  if(has(['jeruk','lemon','nanas','kiwi','stroberi']))o.push('Rasa asam bisa memicu nyeri maag atau sariawan pada sebagian orang.');
+  if(has(['santan','kelapa']))o.push(`${cap(join(namesOf(r,['santan','kelapa'])))} mengandung lemak jenuh lebih tinggi.`);
+  if(r.ings.includes('madu'))o.push('Jangan berikan madu pada bayi di bawah 1 tahun.');
+  o.push('Buah tetap mengandung gula alami, jadi anggap smoothie sebagai pelengkap makan.');
+  return o;
+}
+function algBox(r){
+  const li=[];
+  const src=(k,q)=>r.ings.filter(i=>(ALG_OF[i]||[]).includes((q?'?':'')+k)).map(i=>ING[i].n.toLowerCase());
+  r.algDef.forEach(k=>li.push(`<li><b>${ALG[k]}</b>, dari ${join(src(k,false))}.</li>`));
+  r.algMaybe.forEach(k=>li.push(`<li><b>${ALG[k]}</b> mungkin ada di ${join(src(k,true))}. Cek label produk.</li>`));
+  const lat=namesOf(r,['pisang','alpukat','kiwi']);
+  if(lat.length)li.push(`${cap(join(lat))} bisa bereaksi silang pada penderita alergi lateks.`.replace(/^/,'<li>').concat('</li>'));
+  const pol=namesOf(r,['apel','pir','persik','ceri','kiwi']);
+  if(pol.length)li.push(`<li>${cap(join(pol))} bisa memicu gatal di mulut pada penderita alergi serbuk sari.</li>`);
+  if(r.ings.some(i=>['bunga','chia'].includes(i)))li.push('<li>Biji bunga matahari dan biji chia jarang memicu alergi, tapi bisa terjadi.</li>');
+  if(!li.length)return `<div class="okbox"><h3>Alergi</h3><p class="plain">Tidak ada dari 6 alergen yang kami tandai (susu, kacang tanah, kacang pohon, gluten, telur, kelapa). Alergi pada buah atau bahan tertentu tetap perlu kamu cek sendiri.</p></div>`;
+  return `<div class="warnbox" role="note"><h3>Perhatian alergi</h3><ul>${li.join('')}</ul></div>`;
+}
+function infoHTML(r){
+  const ben=r.ings.filter(i=>BEN[i]).slice(0,5).map(i=>`<li>${ING[i].e} <b>${ING[i].n}</b>: ${BEN[i]}.</li>`).join('');
+  const h=healthNotes(r).map(x=>`<li>${x}</li>`).join('');
+  return `<div><h3>Rasa dan tekstur</h3><p class="plain">${r.taste.join(', ')}. ${r.tex}.</p></div>
+      <div><h3>Manfaat bahan</h3><ul class="bul">${ben}</ul></div>
+      <div><h3>Perhatian kesehatan</h3><ul class="bul">${h}</ul></div>`;
+}
+/*INFO_END*/
+
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const state={q:'',sel:new Set(),all:false,menu:null,fav:false,sort:'rel',limit:24,avoid:new Set()};
+let favs=new Set();
+try{favs=new Set(JSON.parse(localStorage.getItem('smoosh:fav')||'[]').filter(id=>BYID[id]));}catch(e){}
+function saveFavs(){try{localStorage.setItem('smoosh:fav',JSON.stringify([...favs]));}catch(e){}}
+
+function hasFilter(){return !!(state.q.trim()||state.sel.size||state.menu||state.fav||state.avoid.size);}
+function results(){
+  const toks=state.q.toLowerCase().split(/\s+/).filter(Boolean);
+  const sel=[...state.sel];
+  let list=RECIPES.map(r=>({r,m:sel.filter(i=>r.ings.includes(i)).length}));
+  list=list.filter(({r,m})=>
+    (!state.menu||r.menu===state.menu)&&(!state.fav||favs.has(r.id))&&![...state.avoid].some(k=>r.algAll.has(k))&&
+    toks.every(t=>r.hay.includes(t))&&
+    (!sel.length||(state.all?m===sel.length:m>0)));
+  if(state.sort==='az')list.sort((a,b)=>a.r.name.localeCompare(b.r.name));
+  else if(sel.length)list.sort((a,b)=>b.m-a.m||a.r.idx-b.r.idx);
+  return list;
+}
+
+/* hero extras */
+['mangga','stroberi','matcha','alpukat','kacangtanah','jahe'].forEach(id=>{
+  const b=document.createElement('button');b.type='button';b.textContent=ING[id].e+' '+ING[id].n;
+  b.addEventListener('click',()=>{$('q').value=ING[id].n.toLowerCase();state.q=$('q').value;state.limit=24;renderResults();scrollToResults();});
+  $('try').appendChild(b);
+});
+$('bubbles').innerHTML=[['🍓','pink'],['🥭','orange'],['🥑','green'],['🥜','nut'],['🍍','yellow'],['🫐','berry'],['🥬','green'],['🍫','pink']]
+  .map(([e,c])=>`<span style="--mc:var(--c-${c})">${e}</span>`).join('');
+
+/* menus */
+function renderMenus(){
+  $('menus').innerHTML=MENUS.map(m=>{
+    const freq={};RECIPES.filter(r=>r.menu===m.id).forEach(r=>r.ings.forEach(i=>freq[i]=(freq[i]||0)+1));
+    const top=Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,5).map(i=>ING[i].e).join('');
+    const on=state.menu===m.id;
+    return `<button type="button" class="menu-card" data-menu="${m.id}" aria-pressed="${on}" style="--mc:${m.color}">
+      <span class="disk" aria-hidden="true">${m.emoji}</span><h3>${m.name}</h3><p>${m.desc}</p><p class="rasa"><b>Rasa:</b> ${MENU_INFO[m.id].rasa}</p>
+      <span class="foot"><span>25 resep</span>${on?'<span class="sel">Dipilih</span>':`<span class="mini" aria-hidden="true">${top}</span>`}</span></button>`;
+  }).join('');
+}
+$('menus').addEventListener('click',e=>{
+  const b=e.target.closest('[data-menu]');if(!b)return;
+  state.menu=state.menu===b.dataset.menu?null:b.dataset.menu;state.limit=24;
+  renderMenus();renderResults();if(state.menu)scrollToResults();
+});
+
+/* picker */
+function renderGroups(){
+  $('groups').innerHTML=GROUPS.map(([g,label])=>`<div class="grp"><h3>${label}</h3><div class="chips">${
+    Object.values(ING).filter(i=>i.g===g).map(i=>`<button type="button" class="chip" data-ing="${i.id}" aria-pressed="${state.sel.has(i.id)}"><span class="em" aria-hidden="true">${i.e}</span>${i.n}</button>`).join('')
+  }</div></div>`).join('');
+}
+function renderTray(){
+  const sel=[...state.sel];
+  $('picked').innerHTML=sel.length
+    ?'<span>Dipilih:</span>'+sel.map(i=>`<button type="button" class="chip small" data-drop="${i}" aria-label="Hapus ${esc(ING[i].n)}"><span class="em" aria-hidden="true">${ING[i].e}</span>${ING[i].n} ✕</button>`).join('')
+    :'<span>Belum ada bahan dipilih. Ketuk bahan di bawah ini.</span>';
+  $('clearSel').hidden=!sel.length;
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.mode==='all')===state.all)));
+}
+$('groups').addEventListener('click',e=>{
+  const b=e.target.closest('[data-ing]');if(!b)return;
+  const id=b.dataset.ing;
+  if(state.sel.has(id))state.sel.delete(id);else state.sel.add(id);
+  b.setAttribute('aria-pressed',String(state.sel.has(id)));
+  state.limit=24;renderTray();renderResults();
+});
+$('picked').addEventListener('click',e=>{
+  const b=e.target.closest('[data-drop]');if(!b)return;
+  state.sel.delete(b.dataset.drop);state.limit=24;
+  const chip=document.querySelector(`[data-ing="${b.dataset.drop}"]`);if(chip)chip.setAttribute('aria-pressed','false');
+  renderTray();renderResults();
+});
+$('clearSel').addEventListener('click',()=>{state.sel.clear();renderGroups();renderTray();renderResults();});
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{state.all=b.dataset.mode==='all';state.limit=24;renderTray();renderResults();}));
+
+/* allergy filter */
+function renderAvoid(){
+  $('avoidChips').innerHTML=Object.keys(ALG).map(k=>`<button type="button" class="chip warn" data-avoid="${k}" aria-pressed="${state.avoid.has(k)}"><span class="em" aria-hidden="true">${ALG_EMO[k]}</span>${ALG[k]}</button>`).join('');
+}
+$('avoidChips').addEventListener('click',e=>{
+  const b=e.target.closest('[data-avoid]');if(!b)return;
+  const k=b.dataset.avoid;
+  if(state.avoid.has(k))state.avoid.delete(k);else state.avoid.add(k);
+  b.setAttribute('aria-pressed',String(state.avoid.has(k)));
+  state.limit=24;renderResults();
+});
+function renderAbout(){
+  const el=$('about');
+  if(!state.menu){el.hidden=true;el.innerHTML='';return;}
+  const m=MENU[state.menu],mi=MENU_INFO[m.id],rs=RECIPES.filter(r=>r.menu===m.id);
+  const cnt=Object.keys(ALG).map(k=>[k,rs.filter(r=>r.algAll.has(k)).length]).filter(x=>x[1]);
+  const free=rs.filter(r=>!r.algAll.size).length;
+  el.style.setProperty('--mc',m.color);
+  el.innerHTML=`<h3>${m.emoji} Tentang ${m.name}</h3><dl>
+    <div><dt>Rasa</dt><dd>${mi.rasa}</dd></div>
+    <div><dt>Manfaat</dt><dd>${mi.manfaat}</dd></div>
+    <div><dt>Alergen di menu ini</dt><dd>${cnt.length?'Mengandung atau mungkin mengandung: '+cnt.map(([k,n])=>`${ALG[k].toLowerCase()} (${n} dari ${rs.length} resep)`).join(', ')+'. ':''}${free} resep tidak memuat 6 alergen yang kami tandai.</dd></div></dl>`;
+  el.hidden=false;
+}
+
+/* results */
+function cardHTML({r,m}){
+  const mn=MENU[r.menu];
+  const art=r.ings.slice(0,3).map(i=>`<span>${ING[i].e}</span>`).join('');
+  const ings=r.ings.map(i=>`<span class="${state.sel.has(i)?'m':''}">${ING[i].n}</span>`).join('');
+  const fav=favs.has(r.id);
+  return `<article class="card" style="--mc:${mn.color}">
+    <button type="button" class="card-main" data-open="${r.id}">
+      <div class="art" aria-hidden="true">${art}</div>
+      <div class="meta"><span class="menu-tag">${mn.name}</span><h3>${esc(r.name)}</h3>
+      <div class="ings">${ings}</div><div class="taste">${r.taste.join(' · ')}</div>${r.algDef.size?`<div class="algs">${[...r.algDef].map(k=>`<span class="alg">${ALG[k]}</span>`).join('')}</div>`:''}
+      ${state.sel.size?`<span class="match">Memakai ${m} dari ${state.sel.size} bahan pilihanmu</span>`:''}</div>
+    </button>
+    <button type="button" class="fav" data-fav="${r.id}" aria-pressed="${fav}" aria-label="${fav?'Hapus dari favorit':'Simpan ke favorit'}: ${esc(r.name)}">${fav?'♥':'♡'}</button>
+  </article>`;
+}
+function renderActive(){
+  const t=[];
+  if(state.q.trim())t.push(['q',`Kata kunci: ${esc(state.q.trim())}`]);
+  if(state.menu)t.push(['menu',`Menu: ${MENU[state.menu].name}`]);
+  if(state.sel.size)t.push(['sel',`${state.sel.size} bahan (${state.all?'semua wajib ada':'salah satu'})`]);
+  if(state.avoid.size)t.push(['avoid','Bebas: '+[...state.avoid].map(k=>ALG[k]).join(', ')]);
+  if(state.fav)t.push(['fav','Hanya favorit']);
+  $('active').innerHTML=t.map(([k,l])=>`<button type="button" class="tagx" data-clear="${k}">${l}<b aria-hidden="true">✕</b><span class="sr">Hapus filter</span></button>`).join('');
+}
+$('active').addEventListener('click',e=>{
+  const b=e.target.closest('[data-clear]');if(!b)return;
+  const k=b.dataset.clear;
+  if(k==='q'){state.q='';$('q').value='';}
+  if(k==='menu'){state.menu=null;renderMenus();}
+  if(k==='sel'){state.sel.clear();renderGroups();renderTray();}
+  if(k==='avoid'){state.avoid.clear();renderAvoid();}
+  if(k==='fav'){state.fav=false;$('favToggle').setAttribute('aria-pressed','false');}
+  state.limit=24;renderResults();
+});
+function resetAll(){
+  state.q='';$('q').value='';state.sel.clear();state.menu=null;state.fav=false;state.limit=24;state.avoid.clear();
+  $('favToggle').setAttribute('aria-pressed','false');
+  renderMenus();renderGroups();renderAvoid();renderTray();renderResults();
+}
+$('resetAll').addEventListener('click',resetAll);
+let lastCount=RECIPES.length,inView=false;
+function renderResults(){
+  const list=results();lastCount=list.length;
+  $('count').textContent=list.length?`${list.length} resep ditemukan`:'Tidak ada resep yang cocok';
+  $('resetAll').hidden=!hasFilter();
+  renderActive();renderAbout();
+  const shown=list.slice(0,state.limit);
+  if(!list.length){
+    const hint=state.all&&state.sel.size>1?'Coba ganti ke "Salah satu" agar resep dengan sebagian bahanmu ikut muncul.':'Coba kata kunci lain atau kurangi filter.';
+    $('grid').innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="big" aria-hidden="true">🥤</div><h3>Belum ada smoothie yang cocok</h3><p>${hint}</p><button class="btn primary" type="button" id="emptyReset">Reset semua</button></div>`;
+    $('emptyReset').addEventListener('click',resetAll);
+  }else $('grid').innerHTML=shown.map(cardHTML).join('');
+  $('more').innerHTML=list.length>shown.length?`<button class="btn" type="button" id="moreBtn">Tampilkan lebih banyak (${list.length-shown.length})</button>`:'';
+  const mb=$('moreBtn');if(mb)mb.addEventListener('click',()=>{state.limit+=24;renderResults();});
+  updatePill();
+}
+function updatePill(){
+  const p=$('pill');p.textContent=`Lihat ${lastCount} resep ↓`;
+  p.hidden=!(hasFilter()&&!inView);
+}
+$('pill').addEventListener('click',scrollToResults);
+function scrollToResults(){$('hasil').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});}
+if('IntersectionObserver' in window){
+  new IntersectionObserver(es=>{inView=es[0].isIntersecting;updatePill();},{threshold:0}).observe($('hasil'));
+}
+
+/* search + sort + favorites */
+$('q').addEventListener('input',e=>{state.q=e.target.value;state.limit=24;renderResults();});
+$('searchForm').addEventListener('submit',e=>{e.preventDefault();state.q=$('q').value;state.limit=24;renderResults();scrollToResults();});
+$('sort').addEventListener('change',e=>{state.sort=e.target.value;renderResults();});
+function renderFavCount(){$('favCount').textContent=favs.size;}
+$('favToggle').addEventListener('click',()=>{
+  state.fav=!state.fav;$('favToggle').setAttribute('aria-pressed',String(state.fav));state.limit=24;renderResults();if(state.fav)scrollToResults();
+});
+function toggleFav(id){
+  if(favs.has(id))favs.delete(id);else favs.add(id);
+  saveFavs();renderFavCount();
+  if(state.fav){renderResults();return;}
+  const on=favs.has(id);
+  document.querySelectorAll(`[data-fav="${id}"]`).forEach(b=>{
+    b.setAttribute('aria-pressed',String(on));b.textContent=on?'♥':'♡';
+    b.setAttribute('aria-label',(on?'Hapus dari favorit':'Simpan ke favorit')+': '+BYID[id].name);
+  });
+  const f2=document.querySelector(`.fav2[data-fav="${id}"]`);
+  if(f2){f2.setAttribute('aria-pressed',String(on));f2.textContent=on?'♥':'♡';}
+}
+$('grid').addEventListener('click',e=>{
+  const f=e.target.closest('[data-fav]');
+  if(f){toggleFav(f.dataset.fav);return;}
+  const o=e.target.closest('[data-open]');
+  if(o)openDetail(o.dataset.open,o);
+});
+
+/* detail */
+function join(a){return a.length>1?a.slice(0,-1).join(', ')+' dan '+a[a.length-1]:(a[0]||'');}
+function steps(r){
+  const by=g=>r.ings.filter(i=>ING[i].g===g);
+  const nm=a=>a.map(i=>ING[i].n.toLowerCase());
+  const out=[];
+  const fresh=[...by('b'),...by('s')];
+  if(fresh.length)out.push(`Cuci bersih, kupas jika perlu, lalu potong kecil: ${join(nm(fresh))}.`);
+  const liq=by('c').filter(i=>i!=='esbatu');
+  if(liq.length)out.push(`Tuang ${join(nm(liq))} ke dalam blender lebih dulu.`);
+  const rest=[...fresh,...by('k'),...by('l')];
+  if(rest.length)out.push(`Masukkan ${join(nm(rest))}.`);
+  if(r.ings.includes('esbatu'))out.push('Tambahkan es batu paling akhir.');
+  out.push('Blend 45 sampai 60 detik sampai halus.');
+  const sweet=['madu','kurma','eskrim'].some(i=>r.ings.includes(i));
+  out.push(sweet?'Cicipi, lalu tambah air atau es batu kalau terlalu kental.':'Cicipi. Tambahkan sedikit madu atau kurma jika ingin lebih manis.');
+  out.push('Tuang ke gelas tinggi dan sajikan segera.');
+  return out;
+}
+let lastFocus=null;
+function openDetail(id,trigger){
+  const r=BYID[id],mn=MENU[r.menu];lastFocus=trigger||document.activeElement;
+  const nuts=r.ings.some(i=>['almond','kacangtanah','kenari','mete'].includes(i));
+  const noMilk=!r.ings.some(i=>['susu','yogurt','eskrim','coklat'].includes(i));
+  const sim=RECIPES.filter(o=>o.id!==r.id).map(o=>({o,n:o.ings.filter(i=>r.ings.includes(i)).length})).filter(x=>x.n>=2).sort((a,b)=>b.n-a.n||a.o.idx-b.o.idx).slice(0,4);
+  const fav=favs.has(id);
+  $('overlay').innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dTitle" style="--mc:${mn.color}">
+    <div class="sheet-top">
+      <div class="art2" aria-hidden="true">${r.ings.slice(0,4).map(i=>`<span>${ING[i].e}</span>`).join('')}</div>
+      <h2 id="dTitle">${esc(r.name)}</h2>
+      <div class="tags"><span class="tag">${mn.emoji} ${mn.name}</span>${nuts?'<span class="tag">Mengandung kacang</span>':''}${noMilk?'<span class="tag">Tanpa produk susu sapi</span>':''}</div>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="fav2" data-fav="${id}" aria-pressed="${fav}" aria-label="Favorit">${fav?'♥':'♡'}</button>
+      <button type="button" id="dClose" aria-label="Tutup">✕</button>
+    </div>
+    <div class="sheet-body">
+      ${algBox(r)}
+      <div><h3>Bahan</h3><ul class="ing-list">${r.ings.map(i=>`<li><span class="em" aria-hidden="true">${ING[i].e}</span><span>${ING[i].n}<small>${GROUPS.find(g=>g[0]===ING[i].g)[1]}</small></span></li>`).join('')}</ul></div>
+      ${infoHTML(r)}
+      <div><h3>Cara membuat</h3><ol class="steps">${steps(r).map(s=>`<li>${s}</li>`).join('')}</ol></div>
+      <div class="facts"><span>Porsi: 1 gelas besar (sekitar 400 ml)</span><span>Waktu: 5 menit</span><span>Alat: blender</span></div>
+      ${sim.length?`<div><h3>Resep serupa</h3><div class="similar">${sim.map(x=>`<button type="button" class="chip small" data-open="${x.o.id}">${ING[x.o.ings[0]].e} ${esc(x.o.name)}</button>`).join('')}</div></div>`:''}
+      <p class="disc">${DISC}</p>
+    </div></div>`;
+  $('overlay').hidden=false;document.body.style.overflow='hidden';
+  $('dClose').focus();
+}
+function closeDetail(){
+  $('overlay').hidden=true;$('overlay').innerHTML='';document.body.style.overflow='';
+  if(lastFocus&&document.contains(lastFocus))lastFocus.focus();
+}
+$('overlay').addEventListener('click',e=>{
+  if(e.target===$('overlay')||e.target.closest('#dClose')){closeDetail();return;}
+  const f=e.target.closest('[data-fav]');if(f){toggleFav(f.dataset.fav);return;}
+  const o=e.target.closest('[data-open]');
+  if(o){const keep=lastFocus;openDetail(o.dataset.open,keep);const s=document.querySelector('.sheet');if(s)s.scrollTop=0;}
+});
+document.addEventListener('keydown',e=>{
+  if($('overlay').hidden)return;
+  if(e.key==='Escape'){closeDetail();return;}
+  if(e.key==='Tab'){
+    const f=[...$('overlay').querySelectorAll('button')].filter(b=>!b.disabled);
+    if(!f.length)return;
+    const first=f[0],last=f[f.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  }
+});
+
+renderMenus();renderGroups();renderAvoid();renderTray();renderFavCount();renderResults();
+})();
+</script>
+
+</body>
+</html>
